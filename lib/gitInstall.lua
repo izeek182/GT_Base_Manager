@@ -63,13 +63,13 @@ function gitInstall:install(name)
         installQueCnt = installQueCnt + 1;
         local p = self.opts[name]
         local url = "https://"..self.opts.githubLink
-        print("retiving config file from "..url..p.installConfig)
         local cfg = getWebTable(url.."/"..p.installConfig)
-
-        print("Checking depenancys:")
+        print("Checking depenancies:")
         for index, depenant in pairs(cfg.files) do
             if(installQue[depenant] ~= true) then
+                print("Installing depenancy:\""..depenant.."\"")
                 gitInstall:install(depenant)
+                print("depenacy Installed depenancy:\""..depenant.."\"")
             end
         end
 
@@ -83,13 +83,13 @@ function gitInstall:install(name)
                 print("\"" .. file .. "\" up to date skipping")
             end
         end
-        installQue[name] = nil
         installQueCnt = installQueCnt - 1
         if installQueCnt == 0 then
             self:diskSync()
+            installQue = {}
         end
     else
-        print("module not found")
+        print("module \"".. name .."\" not found")
     end
 end
 
