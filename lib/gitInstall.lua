@@ -2,7 +2,7 @@ local gitInstall = {}
 local net = require("internet")
 local s = require("serialization")
 local ft = require("tableToFile")
-local localVersionFile = "/etc/gitVersion."
+local localVersionFile = "/etc/gitVersion.cfg"
 
 local function downloadPage(url)
     local a = net.request(url)
@@ -43,6 +43,15 @@ function gitInstall:logVersion(fileName,version)
     self.locVer[fileName] = version
 end
 
+function gitInstall:diskSync()
+    if(self.locVer == nil)then
+        return
+    else
+        print("saving new versions to disk")
+        ft.save(self.locVer,localVersionFile)
+    end
+end
+
 function gitInstall:getOptions(url)
     self.opts = getWebTable(url)
 end
@@ -63,6 +72,7 @@ function gitInstall:install(name)
                 print("\"" .. file .. "\" up to date skipping")
             end
         end
+        self:diskSync()
     else
         print("module not found")
     end

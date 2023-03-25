@@ -13,7 +13,10 @@ local tableToFile = {}
 
 function tableToFile.load(location)
   --returns a table stored in a file.
-  local tableFile = assert(io.open(location))
+  local tableFile = io.open(location)
+  if(tableFile == nil) then
+    return {}
+  end
   return serialization.unserialize(tableFile:read("*all"))
 end
 
