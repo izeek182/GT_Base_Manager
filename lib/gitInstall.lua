@@ -51,17 +51,20 @@ function gitInstall:install(name)
     if (self.opts[name] ~= nil) then 
         local p = self.opts[name]
         local url = "https://"..self.opts.githubLink
-        local cfg = getWebTable(url..p.installConfig)
+        print("retiving config file from "..url..p.installConfig)
+        local cfg = getWebTable(url.."/"..p.installConfig)
         for index, file in pairs(cfg.files) do
             local v = cfg.fileVersion[file]
             if (self:getVersion(file) < v) then
                 print("\"" .. file .. "\" is out of date, updating to V"..v)
-                getWebFile(url..file,"/bin/"..file)
+                getWebFile(url..file,file)
                 self:logVersion(file,v)
             else 
                 print("\"" .. file .. "\" up to date skipping")
             end
         end
+    else
+        print("module not found")
     end
 end
 
