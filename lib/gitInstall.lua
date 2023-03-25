@@ -3,7 +3,8 @@ local net = require("internet")
 local s = require("serialization")
 local ft = require("tableToFile")
 local localVersionFile = "/etc/gitVersion.cfg"
-
+local installQue = {} 
+local installQueCnt = 0
 local function downloadPage(url)
     local a = net.request(url)
     local s = ""
@@ -58,10 +59,20 @@ end
 
 function gitInstall:install(name)
     if (self.opts[name] ~= nil) then 
+        installQue[name] = true
+        installQueCnt = installQueCnt + 1;
         local p = self.opts[name]
         local url = "https://"..self.opts.githubLink
         print("retiving config file from "..url..p.installConfig)
         local cfg = getWebTable(url.."/"..p.installConfig)
+
+        print("Checking depenancys:")
+        for index, depenant in pairs(cfg.files) do
+            if(installQue[depenant] ~= true) then
+                gitInstall:install(depenant)
+            end
+        end
+
         for index, file in pairs(cfg.files) do
             local v = cfg.fileVersion[file]
             if (self:getVersion(file) < v) then
@@ -72,7 +83,11 @@ function gitInstall:install(name)
                 print("\"" .. file .. "\" up to date skipping")
             end
         end
-        self:diskSync()
+        installQue[name] = nil
+        installQueCnt = installQueCnt - 1
+        if installQueCnt == 0 then
+            self:diskSync()
+        end
     else
         print("module not found")
     end
