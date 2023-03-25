@@ -5,7 +5,7 @@
 --      /cgf/programDepenancies
 --          table{program = {depenantCnt=int(number of progams depenant on this program), dependees={Programs that this program dependends on}}}
 
-header = {["Cache-Control"]="no-cache"}
+local header = {["Cache-Control"]="no-cache"}
 
 -- Sudo Code --------------------------
 -- Request Repo Version Information,
