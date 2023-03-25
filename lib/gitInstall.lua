@@ -10,6 +10,7 @@ local function downloadPage(url)
     for c in a do
         s = s .. c
     end
+    return s
 end
 
 local function getWebTable(url)
