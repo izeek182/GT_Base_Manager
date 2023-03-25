@@ -8,7 +8,7 @@ local function downloadPage(url)
     local a = net.request(url)
     local s = ""
     for c in a do
-        s = s .. a
+        s = s .. c
     end
 end
 
