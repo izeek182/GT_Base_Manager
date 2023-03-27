@@ -1,4 +1,4 @@
-Ports
+# Ports
 
 | Port | Description |
 | --- | ----------- |
@@ -10,15 +10,29 @@ Ports
 | 35 | GLasses port |
 | 40 | FTP |
 
-ServiceCode
+# SubscriptionTypes:
 
-| Enum | Description |
-| ---  | ----------- |
-| 2    | PassUp      |
-| 3    | ADP         |
-| 4    | Debug Net   |
+| Enum | Description        |
+| ---  | -----------        |
+| 2    | Threshold          |
+| 3    | ThresholdOnChang   |
+| 4    | OnChange           |
+| 5    | Timer              |
 
-Subscription Types:
+## Threshold
+Sends subscriber update when value is either inside or outside a specified range
+If value stays in measured range, regular updates are sent on specified Timer
+
+## Threshold On Change
+
+## On Change
+
+## Timer
+
+
+
+
+# Subscription Types:
 | Description       | Tag       |
 | -----------       | ---       |
 | GT Machine Gen    | GT_Gen    |
