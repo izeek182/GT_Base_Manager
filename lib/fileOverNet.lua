@@ -28,4 +28,4 @@ function fileOverNet.listen(fileName)
   tableFile:close()
 end
 
-return tableToFile
+return fileOverNet

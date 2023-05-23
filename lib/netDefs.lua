@@ -29,7 +29,9 @@ if(_NetDefs == nil) then
         ping            = 21,
         heartBeat       = 25,
         componantCmd    = 30,
-        FTP             = 40
+        FTP             = 40,
+        newSubscription = 50,
+        subData         = 51
     }
     _NetDefs.START = 0
     _NetDefs.END   = 420

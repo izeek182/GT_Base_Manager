@@ -3,8 +3,10 @@ local net = require("internet")
 local s = require("serialization")
 local ft = require("tableToFile")
 local localVersionFile = "/etc/gitVersion.cfg"
+local localLibInfo = "/etc/gitInstalledLibs.cfg"
 local installQue = {} 
 local installQueCnt = 0
+
 local function downloadPage(url)
     local a = net.request(url)
     local s = ""
@@ -26,6 +28,10 @@ local function getWebFile(url,dest)
     tableFile:close()
 end
 
+function gitInstall:getRemoteLibs(url)
+    self.opts = getWebTable(url)
+end
+
 function gitInstall:getVersion(fileName)
     if(self.locVer == nil)then
         self.locVer = ft.load(localVersionFile)
@@ -37,6 +43,17 @@ function gitInstall:getVersion(fileName)
     end
 end
 
+function gitInstall:getInstalledLibs()
+    if(self.installedLibs == nil)then
+        self.installedLibs = ft.load(localLibInfo)
+    end
+    if(self.installedLibs == nil)then
+        self.installedLibs = {}
+        ft.save(self.installedLibs,localLibInfo)
+    end
+    return self.installedLibs
+end
+
 function gitInstall:logVersion(fileName,version)
     if(self.locVer == nil)then
         self.locVer = ft.load(localVersionFile)
@@ -45,27 +62,27 @@ function gitInstall:logVersion(fileName,version)
 end
 
 function gitInstall:diskSync()
-    if(self.locVer == nil)then
-        return
-    else
-        print("saving new versions to disk")
+    if(self.locVer ~= nil)then
         ft.save(self.locVer,localVersionFile)
     end
+    if(self.installedLibs ~= nil) then 
+        ft.save(self.installedLibs,localLibInfo)
+    end
+    print("saving new versions to disk")
 end
 
-function gitInstall:getOptions(url)
-    self.opts = getWebTable(url)
-end
 
 function gitInstall:install(name)
-    if (self.opts[name] ~= nil) then 
+    self.installedLibs[name] = true;
+    if (self.opts[name] ~= nil) then
         installQue[name] = true
         installQueCnt = installQueCnt + 1;
         local p = self.opts[name]
         local url = "https://"..self.opts.githubLink
+        print("url:"..url)
         local cfg = getWebTable(url.."/"..p.installConfig)
         print("Checking depenancies:")
-        for index, depenant in pairs(cfg.files) do
+        for index, depenant in pairs(cfg.dependencies) do
             if(installQue[depenant] ~= true) then
                 print("Installing depenancy:\""..depenant.."\"")
                 gitInstall:install(depenant)
@@ -93,10 +110,20 @@ function gitInstall:install(name)
     end
 end
 
+function gitInstall:updateLibs()
+    print("Checking for updates")
+    for libName,meh in ipairs(gitInstall:getInstalledLibs()) do
+        -- gitInstall:checkVersion(libName)
+        print("Checking for update on:"..libName)
+        gitInstall:install(libName)
+    end
+end
+
 local function init()
+    gitInstall:getInstalledLibs()
     gitInstall:getVersion()
     gitInstall.opts = {}
-    gitInstall:getOptions("https://raw.githubusercontent.com/izeek182/GT_Base_Manager/main/programs.cfg")
+    gitInstall:getRemoteLibs("https://raw.githubusercontent.com/izeek182/GT_Base_Manager/main/programs.cfg")
 end
 
 init()
