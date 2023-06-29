@@ -32,6 +32,10 @@ function gitInstall:getRemoteLibs(url)
     self.opts = getWebTable(url)
 end
 
+function gitInstall:refreshRemoteLib()
+    gitInstall:getRemoteLibs("https://raw.githubusercontent.com/izeek182/GT_Base_Manager/main/programs.cfg")
+end
+
 function gitInstall:getVersion(fileName)
     if(self.locVer == nil)then
         self.locVer = ft.load(localVersionFile)
@@ -123,7 +127,7 @@ local function init()
     gitInstall:getInstalledLibs()
     gitInstall:getVersion()
     gitInstall.opts = {}
-    gitInstall:getRemoteLibs("https://raw.githubusercontent.com/izeek182/GT_Base_Manager/main/programs.cfg")
+    gitInstall:refreshRemoteLib()
 end
 
 init()

@@ -28,4 +28,8 @@ function fileOverNet.listen(fileName)
   tableFile:close()
 end
 
+function fileOverNet.startServer()
+  
+end
+
 return fileOverNet

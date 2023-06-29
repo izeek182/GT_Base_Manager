@@ -7,6 +7,7 @@
 
 local git    = require("gitInstall")
 
+git:refreshRemoteLib()
 git:install("Bootstrap")
 git:install("FileUtils")
 

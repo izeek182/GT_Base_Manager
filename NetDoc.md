@@ -1,8 +1,8 @@
 # Ports
 
 | Port | Description |
-| --- | ----------- |
-| 8008 | Logger broadcast   |
+| ---  | ----------- |
+| 8    | Logger broadcast   |
 | 20   | Discovery port     | 
 | 21   | ping port          |
 | 25   | HeartBeat port     |
@@ -11,6 +11,9 @@
 | 40   | FTP                |
 | 50   | new subscription   |
 | 51   | subscribe data     |
+| 1000 - 65534   | RDT Ports |
+
+
 
 # SubscriptionTypes:
 
