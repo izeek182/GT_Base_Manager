@@ -4,6 +4,7 @@ local s = require("serialization")
 local ft = require("tableToFile")
 local localVersionFile = "/etc/gitVersion.cfg"
 local localLibInfo = "/etc/gitInstalledLibs.cfg"
+local installLocation = "/usr"
 local installQue = {} 
 local installQueCnt = 0
 
@@ -23,9 +24,9 @@ end
 
 local function getWebFile(url,dest)
     local f = downloadPage(url)
-    local tableFile = assert(io.open(dest, "w"))
-    tableFile:write(f)
-    tableFile:close()
+    local destFile = assert(io.open(installLocation..dest, "w"))
+    destFile:write(f)
+    destFile:close()
 end
 
 function gitInstall:getRemoteLibs(url)

@@ -18,7 +18,13 @@ local function checkLocalVersions()
     end
 end
 
+local function install()
+    git:install("AutoUpdate")
+end
+
+
 local function init()
+    install()
     local t = thread.create(checkLocalVersions)
     if(t == nil) then
         print("thread failed to create")
