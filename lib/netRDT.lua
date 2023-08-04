@@ -14,7 +14,7 @@ if (RDT == nil) then
     local event = require("event")
     local thread = require("thread")
 
-    local logID = _LogUtil.newLogger("netRDT",_LogLevel.error,_LogLevel.error,_LogLevel.error)
+    local logID = _LogUtil.newLogger("netRDT",_LogLevel.error,_LogLevel.trace,_LogLevel.error)
 
     local _RdtMode = {
         syn1      = 1,
@@ -22,11 +22,13 @@ if (RDT == nil) then
         hb        = 3,
         data      = 4,
         listening = 5,
+        close     = 9,
     }
-    local __windowSize = 8
+    
+    local __windowSize = 16
     local __serviceInterval = 0.5
     local __bufferSize = (__windowSize) * 2
-    local __MaxInFlight = 4
+    local __MaxInFlight = 2
 
     local _NetRDT = {
         time = 0,
@@ -38,8 +40,9 @@ if (RDT == nil) then
         --        ackNum:<LastPacket>,
         --        LastTx:<timestamp>,
         --        LastRx:<timestamp>,
-        --        pktQue:[pktQue],
+        --        dataQue:[pktQue],
         --        lenQue:<length of que>,
+        --        pktsInFlight:
         --        pktInFlight:<packet in flight> }}}openSocket
         newMessagecb = {}, -- {<portNumber>:<callback>}
         newClientcb = {}, -- {<portNumber>:<callback>}
@@ -54,6 +57,7 @@ if (RDT == nil) then
     end
 
     local function openSocket(port, remotePort, remoteHost, callback)
+        _LogUtil.info(logID,"Opening RDT socket on:",port," to ",remoteHost,":",remotePort)
         _NetRDT.portTypes[port] = _RdtMode.data
         _NetUtil.open(port, callback)
         local socket            = {};
@@ -68,12 +72,6 @@ if (RDT == nil) then
         socket.lenQue           = 0
         socket.pktInFlight      = 0
         _NetRDT.Sockets[port]   = socket
-    end
-
-    local function closeSocket(port)
-        _NetUtil.close(port)
-        _NetRDT.portTypes[port] = nil
-        _NetRDT.Sockets[port] = nil
     end
 
     local function getFreePort()
@@ -106,6 +104,7 @@ if (RDT == nil) then
     end
 
     local function sendSocket(localPort, RdtMode, ...)
+        _LogUtil.info(logID,"Sending on:",localPort," -> ",...)
         _NetRDT.Sockets[localPort].LastTx = _NetRDT.time
         _NetUtil.send(
             _NetRDT.Sockets[localPort].remoteHost,
@@ -118,6 +117,16 @@ if (RDT == nil) then
             ),
             packData(...)
             )
+    end
+
+    local function closeSocket(port,graceful)
+        _LogUtil.info(logID,"closing RDT port:",port)
+        if graceful then
+            sendSocket(port,_RdtMode.close)
+        end
+        _NetUtil.close(port)
+        _NetRDT.portTypes[port] = nil
+        _NetRDT.Sockets[port] = nil
     end
 
     local function expectedPacket(port, pktNum)
@@ -138,6 +147,7 @@ if (RDT == nil) then
     -- Recived an ack for a packed dont resend that packet
     local function registerAckPacket(ackNum, port)
         local ackDist = ackDistance(ackNum, _NetRDT.Sockets[port].pktNum)
+        _LogUtil.trace(logID,"Recived packet with ack:",ackNum," on port:",port," distance from last ack:",ackDist)
         while ackDist < __windowSize and ackDist > 0 do
             _NetRDT.Sockets[port].pktInFlight =- 1
             _NetRDT.Sockets[port].lenQue =- 1
@@ -157,7 +167,7 @@ if (RDT == nil) then
     end
 
     local function passOnData(port,...)
-        _NetRDT.Sockets[port].callback(table.unpack({...}))
+        _NetRDT.Sockets[port].callback(...)
     end
 
     local function processRdtPacket(remoteAddress, port, RDT_header, ...)
@@ -165,9 +175,10 @@ if (RDT == nil) then
         registerAckPacket(ackNum, port)
         if (expectedPacket(port, pktNum)) then
             ackPacket(port, pktNum)
-            passOnData(port, table.unpack({...}))
+            passOnData(port, ...)
         end
     end
+
     local function newSocket(localPortIn,remoteAddressIn,remotePortIn)
         return {localPort=localPortIn,remoteAddress=remoteAddressIn,remotePort=remotePortIn}
     end
@@ -178,8 +189,10 @@ if (RDT == nil) then
                                  ...)                                                    -- Next Levels
         local srcPort, pktNum, ackNum, RDT_mode  = unpackHeader(RDT_header) 
         if (RDT_mode == _RdtMode.data) then
+            _LogUtil.info(logID,"Received data on:",port," -> ",...)
             processRdtPacket(remoteAddress, port, pktNum, ackNum, table.unpack({...}))
         elseif (RDT_mode == _RdtMode.syn1) then
+            _LogUtil.info(logID,"Received syn1 on:",port," -> ",...)
             if (_NetRDT.portTypes[port] == _RdtMode.listening) then
                 local newLocalPort = getFreePort()
                 openSocket(newLocalPort,srcPort, remoteAddress, _NetRDT.safeNetProcessing)
@@ -187,19 +200,26 @@ if (RDT == nil) then
                 _NetRDT.newClientcb[port](newSocket(newLocalPort,remoteAddress,srcPort))
             end
         elseif (RDT_mode == _RdtMode.syn2) then
+            _LogUtil.info(logID,"Received syn2 on:",port," -> ",...)
             if (_NetRDT.portTypes[port] == _RdtMode.syn1) then
                 openSocket(port,srcPort, remoteAddress, _NetRDT.safeNetProcessing)
                 event.push(_NetDefs.events.syncResponse,  port, remoteAddress, srcPort)
             end
         elseif (RDT_mode == _RdtMode.hb) then
+            _LogUtil.info(logID,"Received Heart Beat on:",port," -> ",...)
             if (_NetRDT.portTypes[port] == _RdtMode.data) then
                 _NetRDT.Sockets[port].LastRx = _NetRDT.time
             end
+        elseif (RDT_mode == _RdtMode.close) then
+            _LogUtil.info(logID,"port:",port, "Closed by remote host"," -> ",...)
+            if _NetRDT.portTypes[port] == _RdtMode.data then
+                closeSocket(port,false)
+            end
         end
-    end
+end
 
     function _NetRDT.safeNetProcessing(...)
-        return VerboseFailure(netProcessing,...)
+        return _LogUtil.logFailures(logID,netProcessing,...)
     end
 
     local function sendSyn(remoteHost,remotePort,localPort, RdtMode)
@@ -248,7 +268,19 @@ if (RDT == nil) then
 
             if (timeSince(LastRx) > _NetDefs.timeOut.cold) then
                 _LogUtil.error(logID,"Socket Has timed out on port:",localPort)
-                closeSocket(localPort)
+                closeSocket(localPort,false) 
+            end
+        end
+    end
+
+    local function sendNextPacket(localPort)
+        sendSocket(localPort,_RdtMode.data,)
+    end
+
+    local function processQueue()
+        for localPort, socket in pairs(_NetRDT.Sockets) do
+            if (socket.pktInFlight < socket.lenQue )and (socket.pktInFlight <__windowSize) then
+                sendNextPacket(localPort)
             end
         end
     end
@@ -257,6 +289,7 @@ if (RDT == nil) then
         local status,err
         while true do
             os.sleep(__serviceInterval)
+            _LogUtil.logFailures(logID,processQueue)
             _LogUtil.logFailures(logID,advanceTimer)
             _LogUtil.logFailures(logID,handleTimouts)
         end
@@ -267,6 +300,7 @@ if (RDT == nil) then
     end
 
     local function init()
+        _LogUtil.info(logID,"initial startup")
         reset()
         local t = thread.create(netMaintaince)
         if (t == nil) then
@@ -302,7 +336,7 @@ if (RDT == nil) then
     end
 
     function RDT.closeSocket(socket)
-        closeSocket(socket.localPort)
+        closeSocket(socket.localPort,true)
     end
 
     function RDT.send(socket,...)

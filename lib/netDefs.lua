@@ -37,7 +37,7 @@ if(_NetDefs == nil) then
         RDT_end         = 65534
     }
     _NetDefs.pktTypes = {
-        RTD             = 1, 
+        RDT             = 1,
         UDP             = 2,
     }
 

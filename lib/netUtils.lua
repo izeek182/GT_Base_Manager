@@ -11,7 +11,7 @@ if (_NetUtil == nil) then
     local event = require("event")
     local thread = require("thread")
 
-    local logID = _LogUtil.newLogger("netUtil",_LogLevel.error,_LogLevel.error,_LogLevel.error)
+    local logID = _LogUtil.newLogger("netUtil",_LogLevel.error,_LogLevel.trace,_LogLevel.error)
 
     _NetVar = {
         Callbacks = {}, -- {port:Callback}
@@ -37,6 +37,7 @@ if (_NetUtil == nil) then
         local list = component.list("modem")
         _NetVar.modems = {}
         for index, value in pairs(list) do
+            _NetUtil.HostName = index
             _NetVar.modems[index] = component.proxy(index)
         end
     end
@@ -44,6 +45,7 @@ if (_NetUtil == nil) then
     local function netProcessing(eventName, localAddress, remoteAddress, port, distance, --l1
         header,     -- netUtilHeader 
         ...)    -- Next Levels
+        _LogUtil.trace(logID,"new message on:",localAddress,":",port," \"",...,"\"")
 
         local pNum,pAge = unpackHeader(header) -- Do something with the packetData....... someday
 
@@ -65,6 +67,7 @@ if (_NetUtil == nil) then
     end
 
     function _NetUtil.send(dest,port,...)
+        _LogUtil.trace(logID,"Sending:",...)
         _NetVar.packetNum = _NetVar.packetNum + 1;
         local header = packHeader(_NetVar.packetNum,0)
         for key, value in pairs(_NetVar.modems) do
@@ -73,6 +76,7 @@ if (_NetUtil == nil) then
     end
 
     function _NetUtil.broadcast(port,...)
+        _LogUtil.trace(logID,"Broadcasting:",...)
         _NetVar.packetNum = _NetVar.packetNum + 1;
         local header = packHeader(_NetVar.packetNum,0)
         for key, value in pairs(_NetVar.modems) do
@@ -81,6 +85,7 @@ if (_NetUtil == nil) then
     end
     
     function _NetUtil.open(port,callback)
+        _LogUtil.trace(logID,"opening Port:",port)
         for key, value in pairs(_NetVar.modems) do
             _NetVar.modems[key].open(port)
         end
@@ -91,6 +96,7 @@ if (_NetUtil == nil) then
     end
 
     function _NetUtil.close(port)
+        _LogUtil.trace(logID,"closing port:",port)
         for key, value in pairs(_NetVar.modems) do
             _NetVar.modems[key].close(port)
         end
@@ -102,6 +108,7 @@ if (_NetUtil == nil) then
     end
     
     local function init()
+        _LogUtil.info(logID,"initial startup")
         reset()
         local t = thread.create(netMaintaince)
         if(t == nil) then
