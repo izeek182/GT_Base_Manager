@@ -11,21 +11,29 @@ if (_NetUtil == nil) then
     local event = require("event")
     local thread = require("thread")
 
-    local logID = _LogUtil.newLogger("netUtil",_LogLevel.error,_LogLevel.trace,_LogLevel.error)
+    local logID = _LogUtil.newLogger("netUtil",_LogLevel.trace,_LogLevel.trace,_LogLevel.noLog)
+    _LogUtil.trace(logID,"New Logger")
 
     _NetVar = {
         Callbacks = {}, -- {port:Callback}
         packetNum = 0,
         modems = {}
     }
-        
+    local function packPacket(header,data) 
+        return serial.serialize({header,data})
+    end
+
+    local function unpackPacket(packet)
+        packet = serial.unserialize(packet)
+        return table.unpack(packet)
+    end
+
     local function packHeader(PacketNum,PacketAge)
         local header = {PacketNum,PacketAge}
-        return serial.serialize(header)
+        return header
     end
 
     local function unpackHeader(header)
-        local header = serial.unserialize(header)
         return table.unpack(header)
     end
     
@@ -43,16 +51,17 @@ if (_NetUtil == nil) then
     end
     
     local function netProcessing(eventName, localAddress, remoteAddress, port, distance, --l1
-        header,     -- netUtilHeader 
-        ...)    -- Next Levels
-        _LogUtil.trace(logID,"new message on:",localAddress,":",port," \"",...,"\"")
+        packet)
+        _LogUtil.trace(logID,"new message on:",localAddress,":",port," \"",packet,"\"")
+        local header , data = unpackPacket(packet)
 
         local pNum,pAge = unpackHeader(header) -- Do something with the packetData....... someday
 
         if(_NetVar.Callbacks[port] == nil) then
             _LogUtil.error(logID,"NetUtils: could not find callback assosiated with port:"..port)
         else
-            _LogUtil.logFailures(logID,_NetVar.Callbacks[port],eventName, localAddress, remoteAddress, port, distance,table.unpack({...}))
+            _LogUtil.error(logID,"passing data on:"..serial.serialize(data) )
+            _LogUtil.logFailures(logID,_NetVar.Callbacks[port],eventName, localAddress, remoteAddress, port, distance,table.unpack(data))
         end
 
     end
@@ -67,11 +76,12 @@ if (_NetUtil == nil) then
     end
 
     function _NetUtil.send(dest,port,...)
-        _LogUtil.trace(logID,"Sending:",...)
         _NetVar.packetNum = _NetVar.packetNum + 1;
         local header = packHeader(_NetVar.packetNum,0)
+        local packet = packPacket(header, {...})
+        _LogUtil.trace(logID,"Sending:",packet)
         for key, value in pairs(_NetVar.modems) do
-            local sent = _NetVar.modems[key].send(dest,port,header,table.unpack({...}))
+            local sent = _NetVar.modems[key].send(dest,port,packet)
         end
     end
 
@@ -79,8 +89,9 @@ if (_NetUtil == nil) then
         _LogUtil.trace(logID,"Broadcasting:",...)
         _NetVar.packetNum = _NetVar.packetNum + 1;
         local header = packHeader(_NetVar.packetNum,0)
+        local packet = packPacket(header, {...})
         for key, value in pairs(_NetVar.modems) do
-            _NetVar.modems[key].broadcast(port,header,table.unpack({...}))
+            _NetVar.modems[key].broadcast(port,packet)
         end
     end
     

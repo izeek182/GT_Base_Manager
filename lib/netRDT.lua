@@ -14,7 +14,7 @@ if (RDT == nil) then
     local event = require("event")
     local thread = require("thread")
 
-    local logID = _LogUtil.newLogger("netRDT",_LogLevel.error,_LogLevel.trace,_LogLevel.error)
+    local logID = _LogUtil.newLogger("netRDT",_LogLevel.trace,_LogLevel.trace,_LogLevel.noLog)
 
     local _RdtMode = {
         syn1      = 1,
@@ -86,21 +86,11 @@ if (RDT == nil) then
 
     local function packHeader(srcPort, pktNum, ackNum, RDT_mode)
         local header = { srcPort, pktNum, ackNum, RDT_mode }
-        return serial.serialize(header)
+        return header
     end
 
     local function unpackHeader(header)
-        local header = serial.unserialize(header)
         return table.unpack(header)
-    end
-
-    local function unpackData(dataStr)
-        local data = serial.unserialize(dataStr)
-        return table.unpack(data)
-    end
-
-    local function packData(...)
-        return serial.serialize({...})
     end
 
     local function sendSocket(localPort, RdtMode, ...)
@@ -115,7 +105,7 @@ if (RDT == nil) then
                 _NetRDT.Sockets[localPort].ackNum,
                 RdtMode
             ),
-            packData(...)
+            ...
             )
     end
 
@@ -167,11 +157,11 @@ if (RDT == nil) then
     end
 
     local function passOnData(port,...)
+        _LogUtil.trace(logID,"Passing on data:"..serial.serialize({...}))
         _NetRDT.Sockets[port].callback(...)
     end
 
-    local function processRdtPacket(remoteAddress, port, RDT_header, ...)
-        local srcPort, pktNum, ackNum, RDT_mode = unpackHeader(RDT_header)
+    local function processRdtPacket(remoteAddress, port, pktNum, ackNum, ...)
         registerAckPacket(ackNum, port)
         if (expectedPacket(port, pktNum)) then
             ackPacket(port, pktNum)
@@ -179,17 +169,16 @@ if (RDT == nil) then
         end
     end
 
-    local function newSocket(localPortIn,remoteAddressIn,remotePortIn)
-        return {localPort=localPortIn,remoteAddress=remoteAddressIn,remotePort=remotePortIn}
+    local function newSocket(localPortIn,remoteAddressIn,remotePortIn,callBack)
+        return {localPort=localPortIn,remoteAddress=remoteAddressIn,remotePort=remotePortIn,callBack=callBack}
     end
     
     local function netProcessing(eventName, localAddress, remoteAddress, port, distance, --l1
                                  RDT_header,                                             -- RDT_Header
-                                 data,
                                  ...)                                                    -- Next Levels
         local srcPort, pktNum, ackNum, RDT_mode  = unpackHeader(RDT_header) 
         if (RDT_mode == _RdtMode.data) then
-            _LogUtil.info(logID,"Received data on:",port," -> ",...)
+            _LogUtil.info(logID,"Received data on:",port," -> ",serial.serialize({...}))
             processRdtPacket(remoteAddress, port, pktNum, ackNum, table.unpack({...}))
         elseif (RDT_mode == _RdtMode.syn1) then
             _LogUtil.info(logID,"Received syn1 on:",port," -> ",...)
@@ -202,7 +191,7 @@ if (RDT == nil) then
         elseif (RDT_mode == _RdtMode.syn2) then
             _LogUtil.info(logID,"Received syn2 on:",port," -> ",...)
             if (_NetRDT.portTypes[port] == _RdtMode.syn1) then
-                openSocket(port,srcPort, remoteAddress, _NetRDT.safeNetProcessing)
+                openSocket(port,srcPort, remoteAddress,_NetRDT.newClientcb[port].callBack )
                 event.push(_NetDefs.events.syncResponse,  port, remoteAddress, srcPort)
             end
         elseif (RDT_mode == _RdtMode.hb) then
@@ -274,12 +263,13 @@ end
     end
 
     local function sendNextPacket(localPort)
-        sendSocket(localPort,_RdtMode.data,)
+        sendSocket(localPort,_RdtMode.data,"test")
     end
 
     local function processQueue()
         for localPort, socket in pairs(_NetRDT.Sockets) do
             if (socket.pktInFlight < socket.lenQue )and (socket.pktInFlight <__windowSize) then
+                _LogUtil.trace(logID,"sending data from que, len:",socket.lenQue," pktInFlight:",socket.pktInFlight," windowSize:",__windowSize)
                 sendNextPacket(localPort)
             end
         end
@@ -332,7 +322,7 @@ end
         if localPort == nil then
             error("Port failed to open")-- Timed out :(
         end
-        return newSocket(localPort,remoteAddress,remotePort)
+        return newSocket(localPort,remoteAddress,remotePort,callBack)
     end
 
     function RDT.closeSocket(socket)

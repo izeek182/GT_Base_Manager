@@ -4,7 +4,7 @@ if (_LogUtil == nil) then
     _LogUtil = {
         loggerCount = 0
     }
-    local _MaxLogSize = 10000
+    local _MaxLogSize = 1000000
     _LogLevel = {
         trace = 1,
         info = 2,
