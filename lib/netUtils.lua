@@ -60,7 +60,7 @@ if (_NetUtil == nil) then
         if(_NetVar.Callbacks[port] == nil) then
             _LogUtil.error(logID,"NetUtils: could not find callback assosiated with port:"..port)
         else
-            _LogUtil.error(logID,"passing data on:"..serial.serialize(data) )
+            _LogUtil.trace(logID,"passing data on:"..serial.serialize(data) )
             _LogUtil.logFailures(logID,_NetVar.Callbacks[port],eventName, localAddress, remoteAddress, port, distance,table.unpack(data))
         end
 

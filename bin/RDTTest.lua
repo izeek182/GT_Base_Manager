@@ -3,13 +3,13 @@ local RDT = require("netRDT")
 require("logUtils")
 local logID = _LogUtil.newLogger("rdtDebug",_LogLevel.trace,_LogLevel.trace,_LogLevel.noLog)
 
-local dest = "d302a6b6-1453-4753-9ef4-7fcde060ff50";
+local dest = "3ae67331-1f18-49ea-866b-e8bd3e02cb8f";
 local port = 15;
 
 local function clientRxMessage(skt,...)
     _LogUtil.debug(logID,"clientMessage:",...)
     print("clientMessage:")
-    for key, value in pairs(arg) do
+    for key, value in pairs({...}) do
         print(" "..key..":"..value)
     end
 end

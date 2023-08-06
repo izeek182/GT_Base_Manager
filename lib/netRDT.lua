@@ -56,10 +56,19 @@ if (RDT == nil) then
         end
     end
 
+    local function setCallback(localPort,callback)
+        _LogUtil.trace(logID,"setting Callback on",localPort)
+        _NetRDT.Sockets[localPort].callback = callback
+    end
+    local function callCallback(localPort,...)
+        _LogUtil.trace(logID," Calling back on port ",localPort)
+        _NetRDT.Sockets[localPort].callback(...)
+    end
+
     local function openSocket(port, remotePort, remoteHost, callback)
         _LogUtil.info(logID,"Opening RDT socket on:",port," to ",remoteHost,":",remotePort)
         _NetRDT.portTypes[port] = _RdtMode.data
-        _NetUtil.open(port, callback)
+        _NetUtil.open(port,  _NetRDT.safeNetProcessing)
         local socket            = {};
         socket.remoteHost       = remoteHost
         socket.remotePort       = remotePort
@@ -158,7 +167,7 @@ if (RDT == nil) then
 
     local function passOnData(port,...)
         _LogUtil.trace(logID,"Passing on data:"..serial.serialize({...}))
-        _NetRDT.Sockets[port].callback(...)
+        callCallback(port,...)
     end
 
     local function processRdtPacket(remoteAddress, port, pktNum, ackNum, ...)
@@ -169,41 +178,68 @@ if (RDT == nil) then
         end
     end
 
-    local function newSocket(localPortIn,remoteAddressIn,remotePortIn,callBack)
-        return {localPort=localPortIn,remoteAddress=remoteAddressIn,remotePort=remotePortIn,callBack=callBack}
+    local function newSocket(localPortIn,remoteAddressIn,remotePortIn)
+        return {localPort=localPortIn,remoteAddress=remoteAddressIn,remotePort=remotePortIn}
     end
-    
+
+    local function recievedData(port,remoteAddress,pktNum, ackNum,...)
+        _LogUtil.info(logID,"Received data on:",port," -> ",serial.serialize({...}))
+        processRdtPacket(remoteAddress, port, pktNum, ackNum, table.unpack({...}))
+    end
+
+    local function connectionRequest(port,remoteAddress,remotePort)
+        _LogUtil.info(logID,"Received connection request on:",port)
+        if (_NetRDT.portTypes[port] == _RdtMode.listening) then
+            local newLocalPort = getFreePort()
+            -- new client callback returns new message callback
+            local newCallback = _NetRDT.newClientcb[port](newSocket(newLocalPort,remoteAddress,remotePort))
+            if(newCallback == nil) then 
+                _LogUtil.trace(logID," no callback returned, replacing with default ",_NetRDT.newMessagecb[port])
+                newCallback = _NetRDT.newMessagecb[port]
+            end
+            openSocket(newLocalPort,remotePort, remoteAddress, newCallback)
+            sendSocket(newLocalPort, _RdtMode.syn2,port)
+        end
+    end
+    local function tempCallback()
+        _LogUtil.error(logID,"callback never set after connection Accepted")
+    end
+    local function connectionAccepted(port,remoteAddress,remotePort)
+        _LogUtil.info(logID,"Connection accepted:",port)
+        if (_NetRDT.portTypes[port] == _RdtMode.syn1) then
+            openSocket(port, remotePort,remoteAddress,tempCallback)
+            event.push(_NetDefs.events.syncResponse,  port, remoteAddress, remotePort)
+        end
+    end
+
+    local function gotHeartbeat(port)
+        _LogUtil.info(logID,"Received Heart Beat on:",port)
+        if (_NetRDT.portTypes[port] == _RdtMode.data) then
+            _NetRDT.Sockets[port].LastRx = _NetRDT.time
+        end
+    end
+
+    local function closeConnection(port)
+        _LogUtil.info(logID,"port:",port, "Closed by remote host")
+        if _NetRDT.portTypes[port] == _RdtMode.data then
+            closeSocket(port,false)
+        end
+    end
+
     local function netProcessing(eventName, localAddress, remoteAddress, port, distance, --l1
                                  RDT_header,                                             -- RDT_Header
                                  ...)                                                    -- Next Levels
         local srcPort, pktNum, ackNum, RDT_mode  = unpackHeader(RDT_header) 
         if (RDT_mode == _RdtMode.data) then
-            _LogUtil.info(logID,"Received data on:",port," -> ",serial.serialize({...}))
-            processRdtPacket(remoteAddress, port, pktNum, ackNum, table.unpack({...}))
+            recievedData(port,remoteAddress,pktNum, ackNum,...)
         elseif (RDT_mode == _RdtMode.syn1) then
-            _LogUtil.info(logID,"Received syn1 on:",port," -> ",...)
-            if (_NetRDT.portTypes[port] == _RdtMode.listening) then
-                local newLocalPort = getFreePort()
-                openSocket(newLocalPort,srcPort, remoteAddress, _NetRDT.safeNetProcessing)
-                sendSocket(newLocalPort, _RdtMode.syn2,port)
-                _NetRDT.newClientcb[port](newSocket(newLocalPort,remoteAddress,srcPort))
-            end
+            connectionRequest(port,remoteAddress,srcPort)
         elseif (RDT_mode == _RdtMode.syn2) then
-            _LogUtil.info(logID,"Received syn2 on:",port," -> ",...)
-            if (_NetRDT.portTypes[port] == _RdtMode.syn1) then
-                openSocket(port,srcPort, remoteAddress,_NetRDT.newClientcb[port].callBack )
-                event.push(_NetDefs.events.syncResponse,  port, remoteAddress, srcPort)
-            end
+            connectionAccepted(port,remoteAddress,srcPort)
         elseif (RDT_mode == _RdtMode.hb) then
-            _LogUtil.info(logID,"Received Heart Beat on:",port," -> ",...)
-            if (_NetRDT.portTypes[port] == _RdtMode.data) then
-                _NetRDT.Sockets[port].LastRx = _NetRDT.time
-            end
+            gotHeartbeat(port)
         elseif (RDT_mode == _RdtMode.close) then
-            _LogUtil.info(logID,"port:",port, "Closed by remote host"," -> ",...)
-            if _NetRDT.portTypes[port] == _RdtMode.data then
-                closeSocket(port,false)
-            end
+            closeConnection(port)
         end
 end
 
@@ -230,8 +266,18 @@ end
             return
         end
         local bufI = calcPos(_NetRDT.Sockets[port].pktNum,_NetRDT.Sockets[port].lenQue)
+        _LogUtil.trace(logID," queuing new data at:",bufI," to send on port:",port,", ",serial.serialize(packedData))
         _NetRDT.Sockets[port].pktQue[bufI] = packedData
         _NetRDT.Sockets[port].lenQue = _NetRDT.Sockets[port].lenQue + 1
+    end
+
+    local function dequeue(port)
+        local i = _NetRDT.Sockets[port].pktNum
+        local data = _NetRDT.Sockets[port].pktQue[i]
+        _NetRDT.Sockets[port].pktNum = i + 1
+        _NetRDT.Sockets[port].lenQue = _NetRDT.Sockets[port].lenQue - 1
+        _LogUtil.trace(logID," dequeuing data from:",i," to send on port:",port,", ",serial.serialize(data))
+        return data
     end
 
     local function advanceTimer()
@@ -250,8 +296,10 @@ end
             local LastTx = socket.LastTx
             local LastRx = socket.LastRx
             if (socket.pktInFlight > 0 and timeSince(LastTx) > _NetDefs.timeOut.resend) then
+                _LogUtil.trace(logID,"timeout on que resending")
                 resendQue(localPort)
             elseif (socket.pktInFlight == 0 and timeSince(LastTx) > _NetDefs.timeOut.sendHB and _NetRDT.portTypes[localPort] == _RdtMode.data) then
+                _LogUtil.trace(logID,"timeout on POL sending Heartbeat")
                 sendSocket(localPort, _RdtMode.hb)
             end
 
@@ -263,7 +311,7 @@ end
     end
 
     local function sendNextPacket(localPort)
-        sendSocket(localPort,_RdtMode.data,"test")
+        sendSocket(localPort,_RdtMode.data,dequeue(localPort))
     end
 
     local function processQueue()
@@ -314,7 +362,7 @@ end
         _NetUtil.close(port)
     end
  
-    function RDT.openSocket(dest, port, callBack)
+    function RDT.openSocket(dest, port, callback)
         local newLocalPort = getFreePort()
         _NetRDT.portTypes[newLocalPort] = _RdtMode.syn1
         sendSyn(dest,port,newLocalPort)
@@ -322,7 +370,9 @@ end
         if localPort == nil then
             error("Port failed to open")-- Timed out :(
         end
-        return newSocket(localPort,remoteAddress,remotePort,callBack)
+        local skt = newSocket(localPort,remoteAddress,remotePort)
+        setCallback(localPort,callback)
+        return skt
     end
 
     function RDT.closeSocket(socket)
@@ -330,7 +380,7 @@ end
     end
 
     function RDT.send(socket,...)
-        enqueue(socket.localPort)
+        enqueue(socket.localPort,{...})
     end
 
     init()

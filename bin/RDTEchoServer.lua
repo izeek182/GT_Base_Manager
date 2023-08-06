@@ -7,9 +7,6 @@ local port = 15;
 
 local clients = {}
 
-local function newClient(skt)
-    clients[skt.remoteAddress] = skt
-end
 
 local function serverRxMessage(skt,...)
     _LogUtil.info(logID,"serverMessage:",...)
@@ -18,6 +15,14 @@ local function serverRxMessage(skt,...)
     -- end
     RDT.send(skt,...)
 end
+
+local function newClient(skt)
+    clients[skt.remoteAddress] = skt
+    return function (...)
+        serverRxMessage(skt,...)
+    end
+end
+
 
 _LogUtil.info(logID,"Opening Listening Socket On ",_NetUtil.HostName,":",port)
 local serverSkt = RDT.listen(port,newClient,serverRxMessage)
