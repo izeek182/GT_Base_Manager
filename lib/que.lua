@@ -5,7 +5,11 @@ local serial = require("serialization")
 local logID = _LogUtil.newLogger("que",_LogLevel.error,_LogLevel.trace,_LogLevel.noLog)
 
 function que.enqueue(queue,data)
-    local i = queue.ini + (queue.len)
+    if(queue.len >= queue.max) then
+        _LogUtil.error(debug.traceback("Que full! Not appending"))
+        return queue
+    end
+    local i = (queue.ini + (queue.len)) % queue.max
     queue.data[i] = data
     queue.len = queue.len + 1
     _LogUtil.trace(logID,"queuing index:"..i.." ini:"..queue.ini.." len:"..queue.len)
@@ -14,7 +18,11 @@ function que.enqueue(queue,data)
 end
 
 function que.peak(queue,n)
-    local i = queue.ini + (n-1)
+    if(n > queue.len) then
+        _LogUtil.error(debug.traceback("peaking outside of que range returning nil"))
+        return nil
+    end
+    local i = (queue.ini + (n-1)) % queue.max
     local d = queue.data[i]
     _LogUtil.trace(logID,"Peaking at index:"..i.." d:"..serial.serialize(d))
     _LogUtil.trace(logID,"queue:"..serial.serialize(queue))
@@ -22,10 +30,14 @@ function que.peak(queue,n)
 end
 
 function que.dequeue(queue)
-    local i = queue.ini + (queue.len-1)
+    if(queue.len <=0) then
+        _LogUtil.error(debug.traceback("Cant dequeue from an empty que."))
+        return nil
+    end
+    local i = queue.ini
     local d = queue.data[i]
     queue.len = queue.len - 1
-    queue.ini = queue.ini + 1
+    queue.ini = (queue.ini + 1) % queue.max
     queue.data[i] = nil
     _LogUtil.trace(logID,"dequeuing From index:"..i.." ini:"..queue.ini.." len:"..queue.len)
     _LogUtil.trace(logID,"queue:"..serial.serialize(queue))
@@ -33,7 +45,6 @@ function que.dequeue(queue)
 end
 
 function que.len(queue)
-    _LogUtil.trace(logID,"queue:"..serial.serialize(queue))
     return queue.len
 end
 
