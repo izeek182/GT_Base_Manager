@@ -1,7 +1,7 @@
 local RDT = require("netRDT")
 
 require("logUtils")
-local logID = _LogUtil.newLogger("rdtDebug",_LogLevel.trace,_LogLevel.trace,_LogLevel.noLog)
+local logID = _LogUtil.newLogger("rdtDebug",_LogLevel.info,_LogLevel.trace,_LogLevel.noLog)
 
 local port = 15;
 

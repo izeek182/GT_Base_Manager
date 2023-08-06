@@ -64,6 +64,9 @@ if (_LogUtil == nil) then
 
     function _LogUtil.log(logID,level,...)
         local log = loggers[logID]
+        if(log == nil) then
+            error("Invalid LogId \""..logID.."\"")
+        end
         local logstr = formatLog(logID,level,...)
         if(log.cl <= level)then
             _utilLoggers.printLog(logstr)

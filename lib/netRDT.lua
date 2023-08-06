@@ -5,7 +5,7 @@ if (RDT == nil) then
     if(_LogUtil == nil) then
         require("logUtils")
     end
-
+    local que = require("que")
     require("netDefs")
     require("netUtils")
     local component = require("component")
@@ -14,7 +14,7 @@ if (RDT == nil) then
     local event = require("event")
     local thread = require("thread")
 
-    local logID = _LogUtil.newLogger("netRDT",_LogLevel.trace,_LogLevel.trace,_LogLevel.noLog)
+    local logID = _LogUtil.newLogger("netRDT",_LogLevel.error,_LogLevel.trace,_LogLevel.noLog)
 
     local _RdtMode = {
         syn1      = 1,
@@ -40,7 +40,7 @@ if (RDT == nil) then
         --        ackNum:<LastPacket>,
         --        LastTx:<timestamp>,
         --        LastRx:<timestamp>,
-        --        dataQue:[pktQue],
+        --        pktQue:[pktQue],
         --        lenQue:<length of que>,
         --        pktsInFlight:
         --        pktInFlight:<packet in flight> }}}openSocket
@@ -60,10 +60,30 @@ if (RDT == nil) then
         _LogUtil.trace(logID,"setting Callback on",localPort)
         _NetRDT.Sockets[localPort].callback = callback
     end
-    local function callCallback(localPort,...)
+    local function callCallback(localPort,data)
         _LogUtil.trace(logID," Calling back on port ",localPort)
-        _NetRDT.Sockets[localPort].callback(...)
+        _NetRDT.Sockets[localPort].callback(data)
     end
+
+
+    -- local function enqueue(port, packet)
+    --     _NetRDT.Sockets[port].pktQue = que.enqueue(_NetRDT.Sockets[port].pktQue,packet)
+    -- end
+
+    -- local function peakAtData(port)
+    --     local i = _NetRDT.Sockets[port].pktNum+_NetRDT.Sockets[port].pktsInFlight
+    --     local data = _NetRDT.Sockets[port].pktQue[i]
+    --     _LogUtil.trace(logID," dequeuing data from:",i," to send on port:",port,", ",serial.serialize(data))
+    -- end
+
+    -- local function dequeue(port)
+    --     local i = _NetRDT.Sockets[port].pktNum
+    --     local data = _NetRDT.Sockets[port].pktQue[i]
+    --     _NetRDT.Sockets[port].pktNum = i + 1
+    --     _NetRDT.Sockets[port].lenQue = _NetRDT.Sockets[port].lenQue - 1
+    --     _LogUtil.trace(logID," dequeuing data from:",i," to send on port:",port,", ",serial.serialize(data))
+    --     return data
+    -- end
 
     local function openSocket(port, remotePort, remoteHost, callback)
         _LogUtil.info(logID,"Opening RDT socket on:",port," to ",remoteHost,":",remotePort)
@@ -73,16 +93,40 @@ if (RDT == nil) then
         socket.remoteHost       = remoteHost
         socket.remotePort       = remotePort
         socket.callback         = callback
-        socket.pktNum           = 1
-        socket.ackNum           = 1
+        socket.pktNum           = 0
+        socket.ackNum           = 0
         socket.LastTx           = _NetRDT.time
         socket.LastRx           = _NetRDT.time
-        socket.pktQue           = {}
+        socket.pktQue           = que.Queue(__bufferSize)
         socket.lenQue           = 0
         socket.pktInFlight      = 0
         _NetRDT.Sockets[port]   = socket
     end
 
+    local function packPkt(srcPort, RDT_mode, data)
+        local header = { srcPort, 0, 0, RDT_mode }
+        local pkt = {header,data}
+        return pkt
+    end
+
+    local function unpackPkt(pkt)
+        local header, data = table.unpack(pkt)
+        local srcPort, pktNum, ackNum, RDT_mode = table.unpack(header)
+        return srcPort, pktNum, ackNum, RDT_mode, data
+    end
+
+    local function pktSetAckNum(pkt,ack,num)
+        -- _LogUtil.trace(logID,"changing pkt's ack/num",serial.serialize(pkt))
+        pkt[1][3] = ack
+        pkt[1][2] = num
+        -- _LogUtil.trace(logID,"changing new ack/num",serial.serialize(pkt))
+        return pkt
+    end
+
+    local function buildNextPkt(localPort,data)
+        return packPkt(localPort,_RdtMode.data,data)
+    end
+    
     local function getFreePort()
         for i = 1, 100, 1 do
             local rand = math.random(_NetDefs.portEnum.RDT_start, _NetDefs.portEnum.RDT_end)
@@ -93,35 +137,34 @@ if (RDT == nil) then
         return -1
     end
 
-    local function packHeader(srcPort, pktNum, ackNum, RDT_mode)
-        local header = { srcPort, pktNum, ackNum, RDT_mode }
-        return header
-    end
-
-    local function unpackHeader(header)
-        return table.unpack(header)
-    end
-
-    local function sendSocket(localPort, RdtMode, ...)
-        _LogUtil.info(logID,"Sending on:",localPort," -> ",...)
+    local function sendPkt(localPort,pkt)
+        local skt = _NetRDT.Sockets[localPort]
+        local ack = skt.ackNum
+        local num = skt.pktNum + skt.pktInFlight
+        pkt = pktSetAckNum(pkt,ack,num)
+        _LogUtil.info(logID,"Sending on:",localPort," -> ",serial.serialize(pkt))
         _NetRDT.Sockets[localPort].LastTx = _NetRDT.time
         _NetUtil.send(
             _NetRDT.Sockets[localPort].remoteHost,
             _NetRDT.Sockets[localPort].remotePort,
-            packHeader(
-                localPort,
-                _NetRDT.Sockets[localPort].pktNum,
-                _NetRDT.Sockets[localPort].ackNum,
-                RdtMode
-            ),
-            ...
-            )
+            pkt
+        )
+    end
+
+    local function sendSignal(localPort, RdtMode, data)
+        -- _LogUtil.info(logID,"Sending on:",localPort," -> ",data)
+        sendPkt(localPort,
+            packPkt(
+            localPort,
+            RdtMode,
+            data)
+        )
     end
 
     local function closeSocket(port,graceful)
         _LogUtil.info(logID,"closing RDT port:",port)
         if graceful then
-            sendSocket(port,_RdtMode.close)
+            sendSignal(port,_RdtMode.close)
         end
         _NetUtil.close(port)
         _NetRDT.portTypes[port] = nil
@@ -136,45 +179,37 @@ if (RDT == nil) then
         if(recivedAck > currentPktNum) then
             return recivedAck - currentPktNum
         end
-        return (__bufferSize + recivedAck) - currentPktNum
+        return ((__bufferSize + recivedAck) - currentPktNum) % __bufferSize
     end
 
-    local function calcPos(currentPktNum, dist)
-        return (currentPktNum + dist) % __bufferSize
-    end
+
 
     -- Recived an ack for a packed dont resend that packet
     local function registerAckPacket(ackNum, port)
         local ackDist = ackDistance(ackNum, _NetRDT.Sockets[port].pktNum)
-        _LogUtil.trace(logID,"Recived packet with ack:",ackNum," on port:",port," distance from last ack:",ackDist)
+        _LogUtil.trace(logID,"Recived packet with ack:",ackNum," Last PacketNum:",_NetRDT.Sockets[port].pktNum," on port:",port," distance from last ack:",ackDist)
         while ackDist < __windowSize and ackDist > 0 do
-            _NetRDT.Sockets[port].pktInFlight =- 1
-            _NetRDT.Sockets[port].lenQue =- 1
-            _NetRDT.Sockets[port].pktQue[_NetRDT.Sockets[port].pktNum] = nil
-            if _NetRDT.Sockets[port].pktNum == __bufferSize then
-                _NetRDT.Sockets[port].pktNum = 1                
-            else
-                _NetRDT.Sockets[port].pktNum = _NetRDT.Sockets[port].pktNum + 1
-            end
+            _NetRDT.Sockets[port].pktQue = que.dequeue(_NetRDT.Sockets[port].pktQue)
+            _NetRDT.Sockets[port].pktNum = _NetRDT.Sockets[port].pktNum + 1
             ackDist = ackDistance(ackNum, _NetRDT.Sockets[port].pktNum)
         end
     end
 
     local function ackPacket(port, pktNum)
-        _NetRDT.Sockets[port].ackNum = pktNum
+        _NetRDT.Sockets[port].ackNum = pktNum + 1
         -- The the next send packet(HB or data with deliver this ack no need to press the issue)
     end
 
-    local function passOnData(port,...)
-        _LogUtil.trace(logID,"Passing on data:"..serial.serialize({...}))
-        callCallback(port,...)
+    local function passOnData(port,data)
+        _LogUtil.trace(logID,"Passing on data:"..serial.serialize({data}))
+        callCallback(port,data)
     end
 
-    local function processRdtPacket(remoteAddress, port, pktNum, ackNum, ...)
+    local function processRdtPacket(remoteAddress, port, pktNum, ackNum, data)
         registerAckPacket(ackNum, port)
         if (expectedPacket(port, pktNum)) then
             ackPacket(port, pktNum)
-            passOnData(port, ...)
+            passOnData(port, data)
         end
     end
 
@@ -182,9 +217,10 @@ if (RDT == nil) then
         return {localPort=localPortIn,remoteAddress=remoteAddressIn,remotePort=remotePortIn}
     end
 
-    local function recievedData(port,remoteAddress,pktNum, ackNum,...)
-        _LogUtil.info(logID,"Received data on:",port," -> ",serial.serialize({...}))
-        processRdtPacket(remoteAddress, port, pktNum, ackNum, table.unpack({...}))
+    local function recievedData(port,remoteAddress,pktNum, ackNum,data)
+        _LogUtil.info(logID,"Received data on:",port," -> ",serial.serialize(data))
+        _NetRDT.Sockets[port].LastRx = _NetRDT.time
+        processRdtPacket(remoteAddress, port, pktNum, ackNum, data)
     end
 
     local function connectionRequest(port,remoteAddress,remotePort)
@@ -198,7 +234,7 @@ if (RDT == nil) then
                 newCallback = _NetRDT.newMessagecb[port]
             end
             openSocket(newLocalPort,remotePort, remoteAddress, newCallback)
-            sendSocket(newLocalPort, _RdtMode.syn2,port)
+            sendSignal(newLocalPort, _RdtMode.syn2,port)
         end
     end
     local function tempCallback()
@@ -212,11 +248,10 @@ if (RDT == nil) then
         end
     end
 
-    local function gotHeartbeat(port)
+    local function gotHeartbeat(ackNum,port)
         _LogUtil.info(logID,"Received Heart Beat on:",port)
-        if (_NetRDT.portTypes[port] == _RdtMode.data) then
-            _NetRDT.Sockets[port].LastRx = _NetRDT.time
-        end
+        registerAckPacket(ackNum, port)
+        _NetRDT.Sockets[port].LastRx = _NetRDT.time
     end
 
     local function closeConnection(port)
@@ -226,18 +261,17 @@ if (RDT == nil) then
         end
     end
 
-    local function netProcessing(eventName, localAddress, remoteAddress, port, distance, --l1
-                                 RDT_header,                                             -- RDT_Header
-                                 ...)                                                    -- Next Levels
-        local srcPort, pktNum, ackNum, RDT_mode  = unpackHeader(RDT_header) 
+    local function netProcessing(_, _, remoteAddress, port, _,pkt)
+        _LogUtil.trace(logID,"Received:",serial.serialize(pkt))
+        local srcPort, pktNum, ackNum, RDT_mode,data  = unpackPkt(pkt)
         if (RDT_mode == _RdtMode.data) then
-            recievedData(port,remoteAddress,pktNum, ackNum,...)
+            recievedData(port,remoteAddress,pktNum, ackNum,data)
         elseif (RDT_mode == _RdtMode.syn1) then
             connectionRequest(port,remoteAddress,srcPort)
         elseif (RDT_mode == _RdtMode.syn2) then
             connectionAccepted(port,remoteAddress,srcPort)
         elseif (RDT_mode == _RdtMode.hb) then
-            gotHeartbeat(port)
+            gotHeartbeat(ackNum,port)
         elseif (RDT_mode == _RdtMode.close) then
             closeConnection(port)
         end
@@ -247,38 +281,19 @@ end
         return _LogUtil.logFailures(logID,netProcessing,...)
     end
 
-    local function sendSyn(remoteHost,remotePort,localPort, RdtMode)
+    local function sendSyn(remoteHost,remotePort,localPort)
         _NetUtil.open(localPort, _NetRDT.safeNetProcessing)
         _NetUtil.send(
             remoteHost,
             remotePort,
-            packHeader(
-                localPort,
-                0,
-                0,
-                _RdtMode.syn1
-            )
+            packPkt(
+            localPort,
+            _RdtMode.syn1,
+            {})
         )
     end
 
-    local function enqueue(port, packedData)
-        if(_NetRDT.Sockets[port].lenQue==__bufferSize) then
-            return
-        end
-        local bufI = calcPos(_NetRDT.Sockets[port].pktNum,_NetRDT.Sockets[port].lenQue)
-        _LogUtil.trace(logID," queuing new data at:",bufI," to send on port:",port,", ",serial.serialize(packedData))
-        _NetRDT.Sockets[port].pktQue[bufI] = packedData
-        _NetRDT.Sockets[port].lenQue = _NetRDT.Sockets[port].lenQue + 1
-    end
 
-    local function dequeue(port)
-        local i = _NetRDT.Sockets[port].pktNum
-        local data = _NetRDT.Sockets[port].pktQue[i]
-        _NetRDT.Sockets[port].pktNum = i + 1
-        _NetRDT.Sockets[port].lenQue = _NetRDT.Sockets[port].lenQue - 1
-        _LogUtil.trace(logID," dequeuing data from:",i," to send on port:",port,", ",serial.serialize(data))
-        return data
-    end
 
     local function advanceTimer()
         _NetRDT.time = _NetRDT.time + 1
@@ -300,7 +315,7 @@ end
                 resendQue(localPort)
             elseif (socket.pktInFlight == 0 and timeSince(LastTx) > _NetDefs.timeOut.sendHB and _NetRDT.portTypes[localPort] == _RdtMode.data) then
                 _LogUtil.trace(logID,"timeout on POL sending Heartbeat")
-                sendSocket(localPort, _RdtMode.hb)
+                sendSignal(localPort, _RdtMode.hb)
             end
 
             if (timeSince(LastRx) > _NetDefs.timeOut.cold) then
@@ -311,13 +326,16 @@ end
     end
 
     local function sendNextPacket(localPort)
-        sendSocket(localPort,_RdtMode.data,dequeue(localPort))
+        local skt = _NetRDT.Sockets[localPort]
+        sendPkt(localPort,que.peak(skt.pktQue,skt.pktInFlight+1))
+        _NetRDT.Sockets[localPort].pktInFlight = skt.pktInFlight + 1
     end
 
     local function processQueue()
         for localPort, socket in pairs(_NetRDT.Sockets) do
-            if (socket.pktInFlight < socket.lenQue )and (socket.pktInFlight <__windowSize) then
-                _LogUtil.trace(logID,"sending data from que, len:",socket.lenQue," pktInFlight:",socket.pktInFlight," windowSize:",__windowSize)
+            local queLen = que.len(socket.pktQue)
+            if (socket.pktInFlight < queLen )and (socket.pktInFlight <__MaxInFlight) then
+                _LogUtil.trace(logID,"sending data from que, len:",queLen," pktInFlight:",socket.pktInFlight," windowSize:",__MaxInFlight)
                 sendNextPacket(localPort)
             end
         end
@@ -379,8 +397,9 @@ end
         closeSocket(socket.localPort,true)
     end
 
-    function RDT.send(socket,...)
-        enqueue(socket.localPort,{...})
+    function RDT.send(socket,data)
+        local queue = _NetRDT.Sockets[socket.localPort].pktQue 
+        _NetRDT.Sockets[socket.localPort].pktQue = que.enqueue(queue,buildNextPkt(socket.localPort,data))
     end
 
     init()

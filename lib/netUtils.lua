@@ -11,7 +11,7 @@ if (_NetUtil == nil) then
     local event = require("event")
     local thread = require("thread")
 
-    local logID = _LogUtil.newLogger("netUtil",_LogLevel.trace,_LogLevel.trace,_LogLevel.noLog)
+    local logID = _LogUtil.newLogger("netUtil",_LogLevel.error,_LogLevel.trace,_LogLevel.noLog)
     _LogUtil.trace(logID,"New Logger")
 
     _NetVar = {
@@ -79,7 +79,7 @@ if (_NetUtil == nil) then
         _NetVar.packetNum = _NetVar.packetNum + 1;
         local header = packHeader(_NetVar.packetNum,0)
         local packet = packPacket(header, {...})
-        _LogUtil.trace(logID,"Sending:",packet)
+        _LogUtil.trace(logID,"Dest",dest,":",port,"Sending:",packet)
         for key, value in pairs(_NetVar.modems) do
             local sent = _NetVar.modems[key].send(dest,port,packet)
         end
