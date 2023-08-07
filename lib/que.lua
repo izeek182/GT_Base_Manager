@@ -6,7 +6,7 @@ local logID = _LogUtil.newLogger("que",_LogLevel.error,_LogLevel.trace,_LogLevel
 
 function que.enqueue(queue,data)
     if(queue.len >= queue.max) then
-        _LogUtil.error(debug.traceback("Que full! Not appending"))
+        _LogUtil.error(logID,debug.traceback("Que full! Not appending"))
         return queue
     end
     local i = (queue.ini + (queue.len)) % queue.max
@@ -19,7 +19,7 @@ end
 
 function que.peak(queue,n)
     if(n > queue.len) then
-        _LogUtil.error(debug.traceback("peaking outside of que range returning nil"))
+        _LogUtil.error(logID,debug.traceback("peaking outside of que range:"..n.." max"..queue.len.." returning nil"))
         return nil
     end
     local i = (queue.ini + (n-1)) % queue.max
@@ -31,7 +31,7 @@ end
 
 function que.dequeue(queue)
     if(queue.len <=0) then
-        _LogUtil.error(debug.traceback("Cant dequeue from an empty que."))
+        _LogUtil.error(logID,debug.traceback("Cant dequeue from an empty que."))
         return nil
     end
     local i = queue.ini

@@ -4,7 +4,7 @@ if (_LogUtil == nil) then
     _LogUtil = {
         loggerCount = 0
     }
-    local _MaxLogSize = 1000000
+    local _MaxLogSize = 50000
     _LogLevel = {
         trace = 1,
         info = 2,
@@ -42,7 +42,8 @@ if (_LogUtil == nil) then
     local _utilLoggers = {
         broadcastLog = function (...)end,
         fileLog      = function (...)end,
-        printLog     = function (...)end
+        printLog     = function (...)end,
+        clearAllFiles= function (...)end
     }
  
     function _utilLoggers.printLog(str)
@@ -107,6 +108,11 @@ if (_LogUtil == nil) then
         loggers[logID].cl = level
     end
 
+    function _LogUtil.clearAllFiles()
+        _utilLoggers.clearAllFiles()
+    end
+
+
     function _LogUtil.logFailures(logID,callback,...)
         local results
         local arguments = {...}
@@ -130,14 +136,18 @@ if (_LogUtil == nil) then
     end
     
     if not (_FileUtil == nil) then
+        local logsDir = "/logs"
         function _utilLoggers.fileLog(str,name)
-            local fileName = "/logs/"..name..".log"
+            local fileName = logsDir.."/"..name..".log"
             if(_FileUtil.size(fileName) > _MaxLogSize) then
                 _FileUtil.clear(fileName)
             end
             _FileUtil.append(fileName,str,"\n")
         end
-        _FileUtil.ensureDir("/logs/")
+        function _utilLoggers.clearAllFiles()
+            _FileUtil.rm(logsDir)
+            _FileUtil.ensureDir(logsDir.."/")
+        end
     end
 
     if(_NetUtil == nil) then
@@ -152,4 +162,6 @@ if (_LogUtil == nil) then
             _NetUtil.broadcast(_NetDefs.portEnum.logger,str,_NetDefs.HostName)
         end        
     end
+
+    
 end

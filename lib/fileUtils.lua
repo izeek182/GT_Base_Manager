@@ -36,5 +36,9 @@ if (_FileUtil == nil) then
         end
     end
 
-
+    function _FileUtil.rm(file)
+        if(fs.exists(file)) then
+            fs.remove(file)
+        end
+    end
 end
