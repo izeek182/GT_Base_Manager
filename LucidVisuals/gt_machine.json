@@ -1,0 +1,371 @@
+{
+    "properties": [
+        {
+            "name": "machine",
+            "label": "machine",
+            "type": "string",
+            "default": "Mixer"
+        },
+        {
+            "name": "tier",
+            "label": "tier",
+            "type": "string",
+            "default": "ULV"
+        },
+        {
+            "name": "config",
+            "label": "config",
+            "type": "number",
+            "default": "3"
+        },
+        {
+            "name": "time",
+            "label": "time",
+            "type": "number",
+            "default": "2.5"
+        },
+        {
+            "name": "eu/tick",
+            "label": "eu/tick",
+            "type": "number",
+            "default": "7"
+        },
+        {
+            "name": "inResourceA",
+            "label": "inResourceA",
+            "type": "string",
+            "default": "Salt"
+        },
+        {
+            "name": "inAmountA",
+            "label": "inAmountA",
+            "type": "number",
+            "default": "1"
+        },
+        {
+            "name": "inResourceB",
+            "label": "inResourceB",
+            "type": "string",
+            "default": "Water"
+        },
+        {
+            "name": "inAmountB",
+            "label": "inAmountB",
+            "type": "number",
+            "default": "500"
+        },
+        {
+            "name": "inResourceC",
+            "label": "inResourceC",
+            "type": "string",
+            "default": ""
+        },
+        {
+            "name": "inAmountC",
+            "label": "inAmountC",
+            "type": "number",
+            "default": "0"
+        },
+        {
+            "name": "inResourceD",
+            "label": "inResourceD",
+            "type": "string",
+            "default": ""
+        },
+        {
+            "name": "inAmountD",
+            "label": "inAmountD",
+            "type": "number",
+            "default": "0"
+        },
+        {
+            "name": "inResourceE",
+            "label": "inResourceE",
+            "type": "string",
+            "default": ""
+        },
+        {
+            "name": "inAmountE",
+            "label": "inAmountE",
+            "type": "number",
+            "default": "0"
+        },
+        {
+            "name": "outResourceA",
+            "label": "outResourceA",
+            "type": "string",
+            "default": "Salt Water"
+        },
+        {
+            "name": "outAmountA",
+            "label": "outAmountA",
+            "type": "number",
+            "default": "500"
+        },
+        {
+            "name": "outResourceB",
+            "label": "outResourceB",
+            "type": "string",
+            "default": ""
+        },
+        {
+            "name": "outAmountB",
+            "label": "outAmountB",
+            "type": "number",
+            "default": "0"
+        },
+        {
+            "name": "outResourceC",
+            "label": "outResourceC",
+            "type": "string",
+            "default": ""
+        },
+        {
+            "name": "outAmountC",
+            "label": "outAmountC",
+            "type": "number",
+            "default": "0"
+        },
+        {
+            "name": "outResourceD",
+            "label": "outResourceD",
+            "type": "string",
+            "default": ""
+        },
+        {
+            "name": "outAmountD",
+            "label": "outAmountD",
+            "type": "number",
+            "default": "0"
+        },
+        {
+            "name": "outResourceE",
+            "label": "outResourceE",
+            "type": "string",
+            "default": ""
+        },
+        {
+            "name": "outAmountE",
+            "label": "outAmountE",
+            "type": "number",
+            "default": "0"
+        }
+    ],
+    "defs": [
+        {
+            "name":"VoltageNameLU",
+            "value": "=Object('ULV',1,'LV',2,'MV',3,'HV',4,'EV',5,'IV',6,'LUV',7,'ZPM',8,'UV',9,'UHV',10)"
+        },
+        {
+            "name":"VoltageNum",
+            "value": "=Object(@VoltageNameLU,@tier)"
+        },
+        {
+            "name":"VoltageLU",
+            "value": "=get(1,8,2,32,3,128,4,512,5,2048,6,8129,7,32768,8,131072,9,524288,10,2097152)"
+        },
+        {
+            "name": "InputObj",
+            "value": "=TAKEWHILE(ARRAY(object('resource',@inResourceA,'amount',@inAmountA),object('resource',@inResourceB,'amount',@inAmountB),object('resource',@inResourceC,'amount',@inAmountC),object('resource',@inResourceD,'amount',@inAmountD),object('resource',@inResourceE,'amount',@inAmountE)),x => LEN(x.resource)>0)"
+        },
+        {
+            "name": "InputCnt",
+            "value": "=count(TAKEWHILE(ARRAY(@inResourceA,@inResourceB,@inResourceC,@inResourceD,@inResourceE),x => LEN(x)>0))"
+        },
+        {
+            "name": "ProvidedInputs",
+            "value": "=count(TAKEWHILE(ARRAY(@inResourceA,@inResourceB,@inResourceC,@inResourceD,@inResourceE),x => LEN(x)>0))"
+        },
+        {
+            "name": "OutputObj",
+            "value": "=TAKEWHILE(ARRAY(object('resource',@outResourceA,'amount',@outAmountA),object('resource',@outResourceB,'amount',@outAmountB),object('resource',@outResourceC,'amount',@outAmountC),object('resource',@outResourceD,'amount',@outAmountD),object('resource',@outResourceE,'amount',@outAmountE)),x => LEN(x.resource)>0)"
+        },
+        {
+            "name": "OutputCnt",
+            "value": "=count(TAKEWHILE(ARRAY(@outResourceA,@outResourceB,@outResourceC,@outResourceD,@outResourceE),x => LEN(x)>0))"
+        },
+        {
+            "name": "InputsColor",
+            "value": "=HEXCOLOR('#ff00ff')"
+        },
+        {
+            "name": "OutputsColor",
+            "value": "=HEXCOLOR('#00ffff')"
+        },
+        {
+            "name": "Title",
+            "value": "=@machine"
+        },
+        {
+            "name": "TitleColor",
+            "value": "=HEXCOLOR('#cccccc')"
+        },
+        {
+            "name": "ContentHeight",
+            "value": "=20/@Height"
+        }
+    ],
+    "style": {
+        "fill": {
+            "type": "color",
+            "color": "#f5f5f5"
+        },
+        "stroke": {
+            "color": "#999999",
+            "width": 2
+        }
+    },
+    "shapes": [
+        {
+            "geometry": [
+                {
+                    "type": "rect"
+                }
+            ]
+        },
+        {
+            "textarea": {
+                "name": "Title",
+                "text": "{{=@Title}}",
+                "margins": 1,
+                "editable": false,
+                "align": "center",
+                "valign": "middle"
+            },
+            "style": {
+                "fill": {
+                    "type": "color",
+                    "color": "=@TitleColor"
+                }
+            },
+            "bounds": {
+                "x": 0.5,
+                "y": 0,
+                "w": 1,
+                "h": "=(@ContentHeight)",
+                "anchor": "top"
+            },
+            "geometry": [
+                {
+                    "type": "rect"
+                }
+            ]
+        },
+        {
+            "geometry": [
+                {
+                    "type": "rect"
+                }
+            ],
+            "linkpoints": [
+                {
+                    "x": 0,
+                    "y": 0.5
+                }
+            ],
+            "textarea": {
+                "name": "VoltageLevel",
+                "text": "{{=@tier}}",
+                "margins": 1,
+                "editable": false,
+                "align": "center",
+                "valign": "middle"
+            },
+            "bounds": {
+                "x": 0.5,
+                "y": 1,
+                "w": 0.15,
+                "h": 0.15,
+                "anchor": "bottom"
+            }
+        },
+        {
+            "repeat": {
+                "type": "map",
+                "list": "=@InputObj",
+                "index": "i",
+                "item": "v"
+            },
+            "textarea": {
+                "name": "In",
+                "text": "{{=@v.'resource'}}",
+                "margins": 1,
+                "editable": false,
+                "align": "center",
+                "valign": "middle"
+            },
+            "bounds": {
+                "x": 0,
+                "y": "=@i / ((@InputCnt+1)*(1-@ContentHeight)+@ContentHeight)",
+                "w": 0.4,
+                "h": "=1 / (( @InputCnt+2)*(1-@ContentHeight))",
+                "anchor": "left"
+            },
+            "style": {
+                "fill": {
+                    "type": "color",
+                    "color": "=@InputsColor"
+                },
+                "stroke": {
+                    "color": "#999999",
+                    "width": 2
+                }
+            },
+            "geometry": [
+                {
+                    "type": "rect"
+                }
+            ],
+            "linkpoints": [
+                {
+                    "x": 0,
+                    "y": 0.5
+                }
+            ]
+        },
+        {
+            "repeat": {
+                "type": "map",
+                "list": "=@OutputObj",
+                "index": "i",
+                "item": "v"
+            },
+            "textarea": {
+                "name": "Out",
+                "text": "{{=@v.'resource'}}",
+                "margins": 1,
+                "editable": false,
+                "align": "center",
+                "valign": "middle"
+            },
+            "bounds": {
+                "x": 1,
+                "y": "=@i / ((@OutputCnt+1)*(1-@ContentHeight)+@ContentHeight)",
+                "w": 0.4,
+                "h": "=1 / (( @OutputCnt+2)*(1-@ContentHeight))",
+                "anchor": "right"
+            },
+            "style": {
+                "fill": {
+                    "type": "color",
+                    "color": "=@OutputsColor"
+                },
+                "stroke": {
+                    "color": "#999999",
+                    "width": 2
+                }
+            },
+            "geometry": [
+                {
+                    "type": "rect"
+                }
+            ],
+            "linkpoints": [
+                {
+                    "x": 1,
+                    "y": 0.5
+                }
+            ]
+        }
+    ]
+}
