@@ -24,7 +24,17 @@ if(_NetDefs == nil) then
         display     = 2,
         terminal    = 3
     }
+
+    _NetDefs.signals = {
+        interface_msg = "if_msg",   -- if_msg  [interfaceNum] [port] [data]
+        socket_opend  = "skt_new",  -- skt_new [skt_listener_id] [new_skt_id] [local_port] [local_ip] [remote_port] [remote_ip] 
+        socket_msg    = "skt_msg",  -- skt_msg [skt_id] [data]
+    }
+
+
+
     _NetDefs.portEnum = {
+        arp             = 1,
         logger          = 8,
         adp             = 20,
         ping            = 21,

@@ -1,0 +1,3 @@
+-- Protocal 
+-- N number of Core DHPC server, connected via lan. 
+-- Each connection below this distribute (sub IP's) 

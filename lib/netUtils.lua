@@ -70,7 +70,7 @@ if (_NetUtil == nil) then
         _NetVar = {
             Callbacks = {}, -- {port:Callback}
             packetNum = 0,
-            modems = {}
+            modems = {}     --{key:modemAddr :{m:modem,arp:{}}}
         }
         initModems()
     end
