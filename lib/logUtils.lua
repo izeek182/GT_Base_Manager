@@ -1,6 +1,5 @@
 -- This will be a logging utility capable of logging to File and broadcasting over the network
 if (_LogUtil == nil) then 
-    
     _LogUtil = {
         loggerCount = 0
     }
