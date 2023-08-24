@@ -1,12 +1,8 @@
-require("logUtils")
+local Logger,LogLevel = require("logUtil")
 
+local log = Logger:new("LoggerA",LogLevel.trace,LogLevel.trace,LogLevel.trace)
 
-local loggerALvl = _LogLevel.trace
-local loggerA = _LogUtil.newLogger("LoggerA",loggerALvl,loggerALvl,loggerALvl)
-
-
-_LogUtil.log(loggerA,_LogLevel.trace,"Trace Log")
-_LogUtil.log(loggerA,_LogLevel.info,"info Log")
-_LogUtil.log(loggerA,_LogLevel.debug,"debug Log")
-_LogUtil.log(loggerA,_LogLevel.error,"erro Log")
-_LogUtil.log(loggerA,8,"Num Log")
+log:Trace("Trace Log")
+log:Info("info Log")
+log:Debug("debug Log")
+log:Error("error Log")

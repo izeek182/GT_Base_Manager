@@ -1,8 +1,9 @@
-local files       = require("fileUtils")
+local _LogUtil = {}
+require("fileUtils")
 local _MaxLogSize = 1000
 
 ---@alias LogLevel integer
-LogLevel          = {
+local LogLevel          = {
     trace = 1,
     info = 2,
     debug = 3,
@@ -26,10 +27,10 @@ LogLevel          = {
 }
 
 ---@class Logger
----@field name string Name of the logger, should give context as to the owning class
----@field TermLevel Logger Required level to log to Terminal
----@field FileLevel Logger Required level to log to File
----@field NetLevel Logger Required level to send log on net
+---@field protected name      string   Name of the logger, should give context as to the owning class
+---@field protected TermLevel LogLevel Required level to log to Terminal
+---@field protected FileLevel LogLevel Required level to log to File
+---@field protected NetLevel  LogLevel Required level to send log on net
 local Logger      = {
     -- Setting Logger Defaults
     ---@type string
@@ -52,14 +53,14 @@ local Logger      = {
 ---@param NetLogLevel LogLevel
 ---@return Logger
 function Logger:new(name, TerminalLogLevel, FileLogLevel, NetLogLevel)
-    local logger     = {}
-    logger.name      = name or self.name
-    logger.TermLevel = TerminalLogLevel or self.TermLevel
-    logger.FileLevel = FileLogLevel or self.FileLevel
-    logger.NetLevel  = NetLogLevel or self.NetLevel
-    setmetatable(logger, self)
+    local log     = {}
+    log.name      = name or self.name
+    log.TermLevel = TerminalLogLevel or self.TermLevel
+    log.FileLevel = FileLogLevel or self.FileLevel
+    log.NetLevel  = NetLogLevel or self.NetLevel
+    setmetatable(log, self)
     self.__index = self
-    return logger
+    return log
 end
 
 ---takes the time in seconds and formats it to [dd:hh:mm:ss:ms]
@@ -142,30 +143,65 @@ function Logger:log(level, ...)
         self:netLog(logstr)
     end
 end
----Sends 
----@param ... unknown
+
+---Triggers a `trace` log 
+---@param ... any
 function Logger:Trace(...)
+    self:log(LogLevel.trace,...)
 end
 
+---Triggers a `info` log 
+---@param ... any
 function Logger:Info(...)
+    self:log(LogLevel.info,...)
 end
 
+---Triggers a `debug` log 
+---@param ... any
 function Logger:Debug(...)
+    self:log(LogLevel.debug,...)
 end
 
+---Triggers a `error` log 
+---@param ... any
 function Logger:Error(...)
+    self:log(LogLevel.error,...)
 end
 
+---Sets the required level to send log over net
+---@param level LogLevel
 function Logger:setNetLog(level)
     self.NetLevel = level
 end
 
+---Sets the required level to save to file
+---@param level LogLevel
 function Logger:setFileLog(level)
     self.FileLevel = level
 end
 
+---Sets the required level to send to terminal
+---@param level LogLevel
 function Logger:setTermLog(level)
     self.TermLevel = level
+end
+
+---Runs function and logs any thrown errors
+---@param callback function
+---@param ... any
+---@return any
+function Logger:logFailures(callback, ...)
+    local results
+    local arguments = { ... }
+    local status, err = pcall(
+        function()
+            results = { callback(table.unpack(arguments)) }
+        end
+    )
+    if (not status) then
+        self:Error(err, "\n", debug.traceback())
+    end
+    return table.unpack(results)
 end
 
 local function initFile()
@@ -177,32 +213,4 @@ local function init()
 end
 
 init()
-
-function _LogUtil.logFailures(logID, callback, ...)
-    local results
-    local arguments = { ... }
-    local status, err = pcall(
-        function()
-            results = { callback(table.unpack(arguments)) }
-        end
-    )
-    if (not status) then
-        _LogUtil.log(logID, _LogLevel.error, err, "\n", debug.traceback())
-    end
-    return table.unpack(results)
-end
-
-if (_NetUtil == nil) then
-    local status, err = pcall(require, "netUtils")
-    if (not status) then
-        error(debug.traceback(err))
-    end
-end
-
-if not (_NetUtil == nil) then
-    function _utilLoggers.broadcastLog(str)
-        _NetUtil.broadcast(_NetDefs.portEnum.logger, str, _NetDefs.HostName)
-    end
-end
-
-return Logger
+return Logger , LogLevel
