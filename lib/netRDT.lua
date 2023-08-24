@@ -14,6 +14,7 @@ if (RDT == nil) then
     local thread = require("thread")
 
     local log = Logger:new("rdtDebug",LogLevel.error,LogLevel.trace,LogLevel.noLog)
+    log:clearLog()
 
     local _RdtMode = {
         syn1      = 1,

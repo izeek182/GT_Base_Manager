@@ -63,6 +63,10 @@ function Logger:new(name, TerminalLogLevel, FileLogLevel, NetLogLevel)
     return log
 end
 
+function Logger:getFile()
+    return "/logs/" .. self.name .. ".log"
+end
+
 ---takes the time in seconds and formats it to [dd:hh:mm:ss:ms]
 ---@param time number|nil
 ---@return string
@@ -103,7 +107,7 @@ end
 ---Takes a String and logs it to the end of a file in the `/logs/` directory. to a file given the name of the logger
 ---@param str string
 function Logger:fileLog(str)
-    local fileName = "/logs/" .. self.name .. ".log"
+    local fileName = self:getFile()
     if (_FileUtil.size(fileName) > _MaxLogSize) then
         _FileUtil.clear(fileName)
     end
@@ -202,6 +206,15 @@ function Logger:logFailures(callback, ...)
         self:Error(err, "\n", debug.traceback())
     end
     return table.unpack(results)
+end
+
+function Logger:clearLog()
+    _FileUtil.clear(self:getFile())
+end
+
+function Logger:clearAllLogs()
+    _FileUtil.clear("/logs/*",true)
+    _FileUtil.ensureDir("/logs/")
 end
 
 local function initFile()

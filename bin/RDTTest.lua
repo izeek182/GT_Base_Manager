@@ -2,6 +2,7 @@ local RDT = require("netRDT")
 
 local Logger,LogLevel = require("logUtil")
 local log = Logger:new("rdtDebug",LogLevel.info,LogLevel.trace,LogLevel.noLog)
+log:clearLog()
 
 local dest = "3ae67331-1f18-49ea-866b-e8bd3e02cb8f";
 local port = 15;

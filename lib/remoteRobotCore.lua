@@ -13,7 +13,8 @@ local log = Logger:new("rdtDebug",LogLevel.error,LogLevel.trace,LogLevel.noLog)
 local generatorOn = true
 local fuelSlot = rb.inventorySize()
 local fuelSlotDb = 81
-log:Trace("New Logger")
+log:clearLog()
+
 
 local function getEnergyLevel()
     return computer.energy() / computer.maxEnergy()
@@ -58,7 +59,7 @@ end
 local function maintainPowerLevel()
     local invSlot = rb.select()
     rb.select(fuelSlot)
-    energyLevel = getEnergyLevel()
+    local energyLevel = getEnergyLevel()
     if generatorOn and energyLevel > 0.9 then
         disableGenerator()
     elseif (not generatorOn) and energyLevel < 0.4 then

@@ -8,7 +8,7 @@ if (_NetUtil == nil) then
     local event = require("event")
     local thread = require("thread")
     local log = Logger:new("rdtDebug",LogLevel.error,LogLevel.trace,LogLevel.noLog)
-    log:Info("New Logger")
+    log:clearLog()
 
     _NetVar = {
         Callbacks = {}, -- {port:Callback}

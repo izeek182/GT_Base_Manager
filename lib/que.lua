@@ -3,6 +3,7 @@ local Logger,LogLevel = require("logUtil")
 local serial = require("serialization")
 
 local log = Logger:new("rdtDebug",LogLevel.error,LogLevel.trace,LogLevel.noLog)
+log:clearLog()
 
 
 function que.enqueue(queue,data)
