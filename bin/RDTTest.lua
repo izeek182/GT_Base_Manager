@@ -1,13 +1,14 @@
 local RDT = require("netRDT")
 
-require("logUtils")
-local logID = _LogUtil.newLogger("rdtDebug",_LogLevel.debug,_LogLevel.trace,_LogLevel.noLog)
+local Logger = require("logUtil")
+local log = Logger:new("rdt",LogLevel.info,LogLevel.trace,LogLevel.noLog)
+log:clearLog()
 
 local dest = "3ae67331-1f18-49ea-866b-e8bd3e02cb8f";
 local port = 15;
 
 local function clientRxMessage(data)
-    _LogUtil.debug(logID,"clientMessage:",data)
+    log:Debug("clientMessage:",data)
 end
 
 
