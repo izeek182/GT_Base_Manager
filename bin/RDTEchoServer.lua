@@ -1,7 +1,9 @@
 local RDT = require("netRDT")
 
-require("logUtils")
-local logID = _LogUtil.newLogger("rdtDebug",_LogLevel.info,_LogLevel.trace,_LogLevel.noLog)
+local Logger = require("logUtil")
+local log = Logger:new("rdtDebug",LogLevel.info,LogLevel.trace,LogLevel.noLog)
+log:clearLog()
+
 
 local port = 15;
 
@@ -9,7 +11,7 @@ local clients = {}
 
 
 local function serverRxMessage(skt,...)
-    _LogUtil.info(logID,"serverMessage:",...)
+    log:Info("serverMessage:",...)
     -- for key, value in pairs(arg) do
     --     print(" "..key..":"..value)
     -- end
@@ -24,7 +26,7 @@ local function newClient(skt)
 end
 
 
-_LogUtil.info(logID,"Opening Listening Socket On ",_NetUtil.HostName,":",port)
+log:Info("Opening Listening Socket On ",_NetUtil.HostName,":",port)
 local serverSkt = RDT.listen(port,newClient,serverRxMessage)
 
 while true do
