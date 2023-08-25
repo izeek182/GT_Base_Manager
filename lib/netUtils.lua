@@ -1,13 +1,13 @@
 if (_NetUtil == nil) then
     _NetUtil = {
     }
-    local Logger,LogLevel = require("logUtil")
+    local Logger = require("logUtil")
     local component = require("component")
     local computer = require("computer")
     local serial = require("serialization")
     local event = require("event")
     local thread = require("thread")
-    local log = Logger:new("rdtDebug",LogLevel.error,LogLevel.trace,LogLevel.noLog)
+    local log = Logger:new("netUtil",LogLevel.error,LogLevel.trace,LogLevel.noLog)
     log:clearLog()
 
     _NetVar = {

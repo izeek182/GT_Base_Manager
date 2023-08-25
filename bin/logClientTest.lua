@@ -1,4 +1,4 @@
-local Logger,LogLevel = require("logUtil")
+local Logger = require("logUtil")
 
 local log = Logger:new("LoggerA",LogLevel.trace,LogLevel.trace,LogLevel.trace)
 log:clearLog()

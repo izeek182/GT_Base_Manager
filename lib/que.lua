@@ -1,8 +1,8 @@
 local que = {}
-local Logger,LogLevel = require("logUtil")
+local Logger = require("logUtil")
 local serial = require("serialization")
 
-local log = Logger:new("rdtDebug",LogLevel.error,LogLevel.trace,LogLevel.noLog)
+local log = Logger:new("Que",LogLevel.error,LogLevel.trace,LogLevel.noLog)
 log:clearLog()
 
 

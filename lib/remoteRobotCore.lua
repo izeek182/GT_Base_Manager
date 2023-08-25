@@ -1,7 +1,7 @@
 local comp  = require("component")
 local computer = require("computer")
 local thread = require("thread")
-local Logger,LogLevel = require("logUtil")
+local Logger = require("logUtil")
 
 local ae    = comp.upgrade_me
 local gen   = comp.generator
@@ -9,7 +9,7 @@ local db    = comp.database
 local rb    = comp.robot
 
 local _maintInterval = 10
-local log = Logger:new("rdtDebug",LogLevel.error,LogLevel.trace,LogLevel.noLog)
+local log = Logger:new("Robot",LogLevel.error,LogLevel.trace,LogLevel.noLog)
 local generatorOn = true
 local fuelSlot = rb.inventorySize()
 local fuelSlotDb = 81

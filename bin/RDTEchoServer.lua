@@ -1,6 +1,6 @@
 local RDT = require("netRDT")
 
-local Logger,LogLevel = require("logUtil")
+local Logger = require("logUtil")
 local log = Logger:new("rdtDebug",LogLevel.info,LogLevel.trace,LogLevel.noLog)
 log:clearLog()
 

@@ -3,7 +3,7 @@ require("fileUtils")
 local _MaxLogSize = 1000
 
 ---@alias LogLevel integer
-local LogLevel          = {
+LogLevel          = {
     trace = 1,
     info = 2,
     debug = 3,
@@ -208,12 +208,14 @@ function Logger:logFailures(callback, ...)
     return table.unpack(results)
 end
 
+---Clears the log file for tis logger
 function Logger:clearLog()
     _FileUtil.clear(self:getFile())
 end
 
+---Clears every log in the log File
 function Logger:clearAllLogs()
-    _FileUtil.clear("/logs/*",true)
+    _FileUtil.clear("/logs",true)
     _FileUtil.ensureDir("/logs/")
 end
 
@@ -226,4 +228,4 @@ local function init()
 end
 
 init()
-return Logger , LogLevel
+return Logger

@@ -2,7 +2,7 @@ if (RDT == nil) then
     RDT = {
     }
 
-    local Logger,LogLevel = require("logUtil")
+    local Logger = require("logUtil")
     local que = require("que")
     local tcpPkt = require("tcpPacket.lua")
     require("netDefs")
@@ -13,7 +13,7 @@ if (RDT == nil) then
     local event = require("event")
     local thread = require("thread")
 
-    local log = Logger:new("rdtDebug",LogLevel.error,LogLevel.trace,LogLevel.noLog)
+    local log = Logger:new("netRDT",LogLevel.error,LogLevel.trace,LogLevel.noLog)
     log:clearLog()
 
     local _RdtMode = {
