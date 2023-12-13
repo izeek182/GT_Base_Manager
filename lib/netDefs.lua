@@ -19,10 +19,9 @@ if(_NetDefs == nil) then
         socket_msg    = "skt_msg",  -- skt_msg [skt_id] [data]
     }
 
-
-
     _NetDefs.portEnum = {
-        arp             = 1,
+        routing         = 1,
+        dns             = 2,
         logger          = 8,
         adp             = 20,
         ping            = 21,

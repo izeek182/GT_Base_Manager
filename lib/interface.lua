@@ -1,62 +1,120 @@
+---@module "components"
+local routing = require("routing")
+---@class Interface
+---@field protected status boolean the status of the interface `true` if up
+---@field send fun(if:Interface,mac:string, port:integer, ...:any):boolean Sends 
+---@field remoteData fun(if:Interface,localAddress:string, remoteAddress:string, port:number, distance:number, l1Header:string, data):boolean
+---@field broadcast fun(if:Interface,port:number, ...):boolean
+---@field open fun(if:Interface,port:number):boolean
+---@field close fun(if:Interface,port:number):boolean
+---@field getPortStatus fun(if:Interface,port:number):boolean
+---@field isWireless fun(if:Interface):boolean
 local Interface = {status = false}
-    
-function Interface:new (o)
+
+---@type integer The number of open interfaces
+local ifCount = 0
+
+---Applies the Interface metaTable to Object
+---@param o any
+---@return any
+function Interface:extend(o)
     o = o or {}
     setmetatable(o, self)
     self.__index = self
     return o
 end
 
-function Interface:sendARPRequest()
-    self:broadcast(_NetDefs.portEnum.arp)
-end
-
--- Returns interface status
-function Interface:status()
+---Returns the status of this interface
+---@return boolean
+function Interface:getStatus()
     return self.status
 end
 
+---Brings up this interface wraping the given modem
 function Interface:bringUp()
-    if self.type == "modem" then
         self.status = true
-        local ARPsignal = self:open(_NetDefs.portEnum.arp)
-        self:sendARPRequest()
-    end
+end
+
+---@class ModemIF:Interface
+---@field protected IF Modem the Relevant component interface
+local ModemIF = Interface:extend()
+
+
+function ModemIF:send(mac,port,...)
+    return self.IF.send(mac,port,...)
+end
+
+function ModemIF:remoteData(localAddress, remoteAddress, port, distance, l1Header, data)
+    return false
+end
+
+function ModemIF:broadcast(port, ...)
+    return self.IF.broadcast(port,...)
+end
+
+function ModemIF:open(port)
+    return self.IF.open(port)
+end
+
+function ModemIF:close(port)
+    return self.IF.close(port)
+end
+
+function ModemIF:getPortStatus(port)
+    return self.IF.isOpen(port)
+end
+
+function ModemIF:isWireless()
+    return self.IF.isWireless()
+end
+
+---@class TunnelIF:Interface
+---@field protected IF Tunnel the Relevant component interface
+---@field protected ports table<integer,boolean>
+local TunnelIF = Interface:extend()
+
+function TunnelIF:send(_,port,...)
+    return self.IF.send(port,...)
+end
+
+function TunnelIF:remoteData(localAddress, remoteAddress, port, distance,port, l1Header, data)
+    return false
+end
+
+function TunnelIF:broadcast(port, ...)
+    return self.IF.send(port,...)
+end
+
+function TunnelIF:open(port)
+    self.ports[port] = true
+    return self.ports[port]
+end
+
+function TunnelIF:close(port)
+    self.ports[port] = false
+    return self.ports[port]
+end
+
+function TunnelIF:getPortStatus(port)
+    return self.ports[port]
+end
+
+function TunnelIF:isWireless()
+    return true
 end
 
 
-function Interface:remoteData(localAddress, remoteAddress, port, distance, l1Header, data)
-end
 
---Sends message over interface to given IP and port
-function Interface:sendMAC(mac, port, ...)
-    error("abstract Function not implmented")
-end
-
---Broadcasts message over interface to any listening machines
-function Interface:broadcast(port, ...)
-    error("abstract Function not implmented")
-end
-
--- Opens given port on interface with callback on new messages
--- Returns signal to listen on for messages on this port
-function Interface:open(port)
-    error("abstract Function not implmented")
-end
-
--- Closes given port on interface and removes any callback
-function Interface:close(port)
-    error("abstract Function not implmented")
-end
-
--- returns boolean indicating if port is open
-function Interface:getPortStatus()
-    error("abstract Function not implmented")
-end
-
--- return if interface is wireless
-function Interface:isWireless()
-    error("abstract Function not implmented")
+---Creates new interface around a given modem
+---@param modem Modem
+---@return Interface
+function Interface:new(modem)
+    local o = {
+        IF = modem
+    }
+    setmetatable(o, self)
+    self.__index = self
+    return o
 end
 
 return Interface

@@ -5,7 +5,7 @@ local Tunnel = {}
 Tunnel.portStatus = Interface:new()
 
 
-function Interface:bringUp()
+function Tunnel:bringUp()
     if self.type == "tunnel" then
         self.status = true
         local ARPsignal = self:open(_NetDefs.portEnum.arp)
