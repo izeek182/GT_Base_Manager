@@ -1,14 +1,5 @@
 ---@module "components"
 local routing = require("routing")
----@class Interface
----@field protected status boolean the status of the interface `true` if up
----@field send fun(if:Interface,mac:string, port:integer, ...:any):boolean Sends 
----@field remoteData fun(if:Interface,localAddress:string, remoteAddress:string, port:number, distance:number, l1Header:string, data):boolean
----@field broadcast fun(if:Interface,port:number, ...):boolean
----@field open fun(if:Interface,port:number):boolean
----@field close fun(if:Interface,port:number):boolean
----@field getPortStatus fun(if:Interface,port:number):boolean
----@field isWireless fun(if:Interface):boolean
 local Interface = {status = false}
 
 ---@type integer The number of open interfaces
